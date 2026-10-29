@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  pom.xml：最小可用依赖清单。
+  版本已锁定为既定技术栈（Spring Boot 3.0.5 / MyBatis-Plus 3.5.5.x / JDK 17+）。
+  如果你的项目已有 parent，删掉 parent 与 relativePath，把依赖原样拷进即可。
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.0.5</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.appliance</groupId>
+    <artifactId>session-server</artifactId>
+    <version>1.0.0</version>
+    <name>itwb-session-server</name>
+    <description>IT 开发工作台 - 多端登录会话管理服务</description>
+
+    <properties>
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <mybatis-plus.version>3.5.5</mybatis-plus.version>
+    </properties>
+
+    <dependencies>
+        <!-- Web：自带 Jackson，DTO 的序列化注解直接用 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- MyBatis-Plus：3.5.5 起的 -spring-boot3 -starter，对应 Spring Boot 3 / jakarta -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+            <version>${mybatis-plus.version}</version>
+        </dependency>
+
+        <!-- Oracle 驱动：ojdbc11 支持 JDK 11+，若用 JDK 17 建议 ojdbc11；17c 以下不要换 ojdbc17 -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc11</artifactId>
+            <version>21.7.0.0</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Oracle 国家字符集支持：新库字符集为 ZHS16GBK，ojdbc11 不加 orai18n 会在读取字符串/CLOB 列时报
+             "不支持的字符集 (在类路径中添加 orai18n.jar): ZHS16GBK"。必须随 ojdbc11 一起引入。 -->
+        <dependency>
+            <groupId>com.oracle.database.nls</groupId>
+            <artifactId>orai18n</artifactId>
+            <version>21.7.0.0</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- 连接池：Oracle 下 HikariCP 默认即可 -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+        </dependency>
+
+        <!-- 定时任务：@EnableScheduling 需要 spring-context，starter-web 已包含无需单独引 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+
+        <!-- Spring Security：SecurityFilterChain + STATELESS 令牌认证（见 SecurityConfig）。
+             Boot 3.0.5 托管 Security 6.0.8，无需写版本号；
+             引入后 Boot 的默认安全配置自动让位于 SecurityConfig 里的自定义过滤链 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- 集成测试（仅 test 作用域，用于验证 wb 模块落库与 USER_ID 隔离） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- ===== 方案③ 合并：调度后端所需依赖（并入在役 18077） ===== -->
+        <!-- 参数校验：@Valid / @NotBlank 等（调度 DTO 强依赖） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <!-- Redis（Lettuce）：任务变更 Pub/Sub + 分布式锁兜底 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <!-- 可观测性（可选） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- Lombok：调度包大量使用 @Data / @RequiredArgsConstructor / @Slf4j -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- JWT（调度自建账号认证；与 wb 令牌体系解耦） -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.11.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.11.5</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.11.5</version>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

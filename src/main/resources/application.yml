@@ -1,0 +1,135 @@
+# ==================================================================================================
+# 文件：application.yml（Oracle 19c + MyBatis-Plus 3.5.5.x + Spring Boot 3.0.5）
+# 说明：生产环境请把 datasource 的账号密码放到环境变量或配置中心，不要提交到代码库。
+#       本文件口令已改为环境变量占位符（ITWB_DB_PASSWORD / ITWB_REDIS_PASSWORD /
+#       ITWB_AUTH_PASSWORD / ITWB_TOKEN_SECRET），真实值见 gitignored 的
+#       application-local.yml 或部署机环境变量，绝不入库。
+# ==================================================================================================
+server:
+  # 【端口安全说明】不能用 77：77 在 Chromium/Edge 的封锁端口黑名单（ERR_UNSAFE_PORT），
+  # 浏览器 fetch 直接拒连（curl 不受限，易误判为正常）。选用 18077（黑名单外）。
+  port: 18077
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+
+spring:
+  application:
+    name: itwb-session-server
+  datasource:
+    driver-class-name: oracle.jdbc.OracleDriver
+    url: jdbc:oracle:thin:@//172.16.253.180:1521/orcl
+    username: jddba
+    password: ${ITWB_DB_PASSWORD}
+    hikari:
+      pool-name: ItwbHikariPool
+      # Oracle 建议用 30s 以上，避免长时间空闲被防火墙断链
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      maximum-pool-size: 20
+      connection-timeout: 30000
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: Asia/Shanghai
+  mvc:
+    problemdetails:
+      enabled: false
+  # ===== 方案③ 调度内核：Redis（与本地已启动的 Redis 一致）=====
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      password: ${ITWB_REDIS_PASSWORD}
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+          max-wait: 1000ms
+
+mybatis-plus:
+  global-config:
+    db-config:
+      # 主键策略：应用层生成（ItwbIdentifierGenerator），绕开 Oracle IDENTITY 在显式 NULL 时的 ORA-01400。
+      # 各实体已在 @TableId 上显式声明：数值型(Long)→ASSIGN_ID，字符串型(String/NUMBER)→ASSIGN_UUID。
+      # （库里没有 CREATE SEQUENCE，配 auto 会走序列路径报 ORA-02289。）
+      id-type: assign_id
+      # 下划线转驼峰自 MP 3.5 起默认开启，无需（也不能）再配 column-underline
+  configuration:
+    # 不配 log-impl 即默认不打印 SQL；调试期可临时改为 org.apache.ibatis.logging.stdout.StdOutImpl
+    # （注意：不能写 false——它是枚举/类名属性，非法值会在启动时绑定失败）
+    log-prefix: "[itwb-session] "
+    jdbc-type-for-null: 'null'
+  mapper-locations: classpath*:/mapper/**/*.xml
+
+# --------------------------------------------------------------------------------------------------
+# 项目自定义配置
+# --------------------------------------------------------------------------------------------------
+itwb:
+  session:
+    # 绝对生命周期上限：从登录时刻起算，滑动续期也不会越过它，防止"每天点一次就永不过期"
+    expire-duration: 8h
+    # 最大空闲时长：连续无操作超过它就失效（滑动过期按它前移）
+    max-idle-duration: 30m
+    # 续期阈值：剩余有效期低于该值时，校验/请求才会真正写库续期（决定写库频率）
+    extend-threshold: 5m
+    # 多端并存开关：false = 单点登录（同设备类型踢旧会话），默认 true 允许多台电脑同时在线
+    multi-login-enabled: true
+    # 单用户最大会话数，0 表示不限制；超限时按最后活跃时间淘汰最旧的
+    max-sessions-per-user: 5
+    # 终端指纹绑定：true 时令牌不能换设备使用，代价是设备指纹丢失后只能重新登录
+    device-binding-enabled: false
+    # 记住我的过期时长
+    remember-me-duration: 30d
+    # 过期会话清理：默认每 10 分钟一次（与数据库侧 DBMS_SCHEDULER 二选一，别同时开）
+    cleanup-enabled: true
+    cleanup-cron: "0 0/10 * * * ?"
+    cleanup-batch-size: 1000
+    # 放行路径（Ant 风格），与 SecurityConfig 白名单共用这一份。
+    # 注意：需要身份的接口（如 /api/auth/logout）不能加进来——过滤器跳过后 userId 为空，
+    # Service 层归属校验会直接拒绝，表现为"功能失效"而非报错，极难排查。
+    # skip-urls: /api/auth/login,/favicon.ico,/actuator/health
+
+  # --------------------------------------------------------------------------------------------------
+  # 登录认证（ConfigUserAuthServiceImpl）：内网单人工具的固定账号方案。
+  # user-id 必须与业务表（WB_ITEM/WB_PROJECT/WB_NOTE）已有数据的 USER_ID 一致，
+  # 否则登录后快照读出来是空的。后续接 ERP 用户表时删除本段并替换实现。
+  # --------------------------------------------------------------------------------------------------
+  auth:
+    username: 张晋宝
+    password: ${ITWB_AUTH_PASSWORD}
+    user-id: 张晋宝
+    display-name: 张晋宝
+
+  token:
+    # 密码学盐（服务端 pepper）。生产环境用环境变量注入：
+    #   -Ditwb.token.secret=${ITWB_TOKEN_SECRET}  或  ITWB_TOKEN_SECRET=xxx
+    # 留空会在启动时自动生成随机盐并打 WARN，重启后所有已登录会话会被强制下线。
+    secret: ${ITWB_TOKEN_SECRET:}
+    hash-algorithm: SHA-256
+
+# ===== 方案③ 调度内核配置（并入在役 18077）=====
+scheduler:
+  enabled: true
+  timezone: Asia/Shanghai
+  node-id: merged-node-1
+  shard-total: 1
+  wheel-tick-ms: 1000
+  dispatch-interval-ms: 2000
+  misfire-threshold-ms: 300000
+  catch-up-max: 1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  level:
+    com.appliance.itwb: info
+    com.appliance.itwb.session: info
+    com.workbuddy.sched: debug
