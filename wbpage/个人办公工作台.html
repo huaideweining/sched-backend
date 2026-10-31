@@ -1566,6 +1566,23 @@ function groupedList(arr) {
       <div class="list">${ks.map(taskRow).join('')}</div></div>`;
   }).join('');
 }
+/* ---------- 全局日期辅助（供视图层 taskRow / vTasks / 编辑弹层 与同步模块共用） ---------- */
+/* 注：此前 msToStr / fmtDtLocal / fmtTsDisp 被误置于云端同步模块内部（局部作用域），
+   导致全局的 vTasks / taskRow 调用时抛 ReferenceError，使「今天待办」视图主体无法渲染。
+   现提升为全局函数，模块内保留局部同名定义亦可正常覆盖，互不影响。 */
+function msToStr(ms) {
+  if (ms == null) return null;
+  var d = new Date(Number(ms));
+  if (isNaN(d.getTime())) return null;
+  var p = function (n) { return (n < 10 ? '0' : '') + n; };
+  var y = d.getFullYear(), m = p(d.getMonth() + 1), day = p(d.getDate());
+  var hh = p(d.getHours()), mm = p(d.getMinutes());
+  if (hh === '00' && mm === '00') return y + '-' + m + '-' + day;
+  return y + '-' + m + '-' + day + 'T' + hh + ':' + mm;
+}
+function fmtDtLocal(v) { if (!v) return ''; v = String(v).trim(); return v.length <= 10 ? v + 'T00:00' : v.slice(0, 16); }
+function fmtTsDisp(v) { if (!v) return '—'; return String(v).replace('T', ' ').slice(0, 16); }
+
 function vTasks() {
   const t = TODAY(), f = ui.taskFilter;
   const dtNow = msToStr(Date.now()); /* 结束时间(datetime-local)默认=当天当前时刻 */
@@ -2786,19 +2803,8 @@ if (rolled) setTimeout(() => toast(T('tRolledOver', rolled)), 500);
   function prioMap(p) { var n = Number(p); if (!(n >= 1)) return 'p2'; if (n <= 1) return 'p0'; if (n === 2) return 'p1'; return 'p2'; }
   function statusMap(done) { return done ? 'done' : 'todo'; }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
-  function msToStr(ms) {
-    if (ms == null) return null;
-    var d = new Date(Number(ms));
-    if (isNaN(d.getTime())) return null;
-    var y = d.getFullYear(), m = pad(d.getMonth() + 1), day = pad(d.getDate());
-    var hh = pad(d.getHours()), mm = pad(d.getMinutes());
-    if (hh === '00' && mm === '00') return y + '-' + m + '-' + day;
-    return y + '-' + m + '-' + day + 'T' + hh + ':' + mm;
-  }
   function strToMs(s) { if (!s) return null; var t = Date.parse(s); return isNaN(t) ? null : t; }
   function dueToStr(due) { return msToStr(typeof due === 'number' ? due : strToMs(due)); }
-  function fmtDtLocal(v) { if (!v) return ''; v = String(v).trim(); return v.length <= 10 ? v + 'T00:00' : v.slice(0, 16); }
-  function fmtTsDisp(v) { if (!v) return '—'; return String(v).replace('T', ' ').slice(0, 16); }
 
   /* ---------- S 模型 -> 后端 SnapshotDTO（仅送后端能存的最小子集；其余字段本地保留） ---------- */
   function toSnapshot() {

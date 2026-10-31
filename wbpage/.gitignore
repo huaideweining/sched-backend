@@ -1,0 +1,3 @@
+# 运行时日志（由 start-workbench 启动脚本写入，不入库）
+serve.log
+serve.err.log
