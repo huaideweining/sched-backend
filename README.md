@@ -161,10 +161,15 @@
 
 ### CORS
 
-默认放开以便单文件前端（file:// 或局域网 IP）联调：
-允许任意来源 + `Authorization` / `Content-Type` / `X-Device-Id` 请求头，预检缓存 1 小时。
-**生产环境务必把 `SecurityConfig#corsConfigurationSource` 里的
-`allowedOriginPatterns` 收紧为实际前端地址。**
+允许来源来自 `itwb.session.cors-allowed-origins`（见 `SessionProperties`，默认含
+`http://172.16.132.64:8088` + `http://127.0.0.1:8088` + `http://localhost:8088` 三类 8088 来源）。
+允许头含 `Authorization` / `Content-Type` / `X-Device-Id`，预检缓存 1 小时，预检（OPTIONS）放行。
+
+**为什么是具体来源而非 `*`**：带 Bearer 令牌透传时放 `*` 等于裸奔；Phase C 已收紧。
+**为什么必须覆盖本地来源**：浏览器以 127.0.0.1 / localhost / 其他 IP 打开 8088 静态服务器时，
+请求头里的 `Origin` 必须命中白名单，否则预检 403 且无 `Access-Control-Allow-Origin`，
+前端带令牌的实时数据请求被浏览器拦截、无法从 18077 拉取。生产部署按真实前端地址覆盖该配置即可，
+不要改回 `*`。
 
 ### 依赖变化
 

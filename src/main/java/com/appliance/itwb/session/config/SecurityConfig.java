@@ -53,9 +53,10 @@ import java.util.Arrays;
  *       否则过滤器跳过校验，userId 属性为空，Service 层归属校验会直接拒绝；</li>
  *   <li><b>CSRF 关闭的前提</b>：纯 Bearer 令牌 + STATELESS，无 Cookie 会话，
  *       CSRF 攻击面不存在；若将来引入 Cookie（记住我等），必须重新评估；</li>
-     *   <li><b>CORS</b>：allowedOriginPatterns 已收敛为部署态前端来源
-     *       {@code http://172.16.132.64:8088}（Phase C 收紧，不再 allow *）；
-     *       预检请求（OPTIONS）放行，否则浏览器在携带令牌前就被拦死。</li>
+     *   <li><b>CORS</b>：allowedOriginPatterns 来自 {@code itwb.session.cors-allowed-origins}
+     *       （默认含部署态 {@code http://172.16.132.64:8088} + 本地回环/localhost 三类 8088 来源，
+     *       Phase C 收紧为具体来源、不再 allow *）；预检请求（OPTIONS）放行，
+     *       否则浏览器在携带令牌前就被拦死。</li>
  * </ul>
  */
 @Configuration
@@ -130,8 +131,9 @@ public class SecurityConfig {
     }
 
     /**
-     * CORS 配置（Phase C 已收紧）：allowedOriginPatterns 仅放行部署态前端来源
-     * {@code http://172.16.132.64:8088}，不再 allow *。
+     * CORS 配置（Phase C 收紧，现外部化）：allowedOriginPatterns 来自
+     * {@code itwb.session.cors-allowed-origins}（默认含部署态 IP + 本地回环 + localhost 三类 8088 来源），
+     * 不再硬编码单一 IP、也不再 allow *。
      *
      * <p>预检请求（OPTIONS）放行，否则浏览器在携带令牌前就被拦死；
      * 允许头含 Authorization / Content-Type / X-Device-Id，支持 Bearer 令牌透传。</p>
@@ -141,9 +143,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Phase C 收紧：由 * 收敛为部署态前端来源（8088 静态服务器）。
-        // 如需本地 file:// 或 localhost 联调，请把对应来源一并加入该列表；长期不要 allow *。
-        config.setAllowedOriginPatterns(Arrays.asList("http://172.16.132.64:8088"));
+        // Phase C 复盘：此前硬编码 http://172.16.132.64:8088，浏览器以 127.0.0.1 / localhost /
+        // 其他 IP 打开 8088 时 Origin 不在白名单，预检 403 且无 ACAO，前端实时数据拉取失败。
+        // 现改为读取配置，默认已覆盖三类 8088 来源，生产部署按真实前端地址覆盖即可。
+        String[] origins = sessionProperties.getCorsAllowedOrigins();
+        config.setAllowedOriginPatterns(Arrays.asList(origins != null ? origins : new String[]{"http://172.16.132.64:8088"}));
         config.setAllowedMethods(Arrays.asList(
                 HttpMethod.GET.name(), HttpMethod.POST.name(),
                 HttpMethod.PUT.name(), HttpMethod.DELETE.name(),

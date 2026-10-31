@@ -1,3 +1,6 @@
 # 运行时日志（由 start-workbench 启动脚本写入，不入库）
 serve.log
 serve.err.log
+
+# 浏览器交叉确认截图（一次性验证证据，不入库）
+vtasks_confirm.png

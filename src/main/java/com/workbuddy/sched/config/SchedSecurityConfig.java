@@ -33,7 +33,11 @@ public class SchedSecurityConfig {
 
     /** 复用在役 wb 会话令牌过滤器（统一令牌，单一鉴权实现） */
     private final TokenAuthenticationFilter tokenAuthenticationFilter;
-    /** 复用在役 wb 的 CORS 配置（允许任意来源，便于单文件前端联调） */
+    /**
+     * 复用在役 wb 的 CORS 配置（{@code itwb.session.cors-allowed-origins} 外部化的来源白名单，
+     * 默认覆盖 8088 部署态 IP + 127.0.0.1 + localhost 三类来源；非 allow *，避免 Bearer 令牌透传裸奔）。
+     * 与 {@code SecurityConfig} 共用同一个 {@link CorsConfigurationSource} Bean，改一处两边生效。
+     */
     private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean

@@ -20,6 +20,10 @@ tools/snapshot.json
 
 # ===== 本地敏感配置（含真实口令，绝不入库） =====
 application-local.yml
+# verify-cors.sh 本地环境变量（含 ITWB_* 口令/classpath，绝不入库）
+.cors-verify.env
+# 后端重启时的本地日志重定向
+backend.log
 
 # ===== OS =====
 .DS_Store

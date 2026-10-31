@@ -93,6 +93,13 @@ itwb:
     # Service 层归属校验会直接拒绝，表现为"功能失效"而非报错，极难排查。
     # skip-urls: /api/auth/login,/favicon.ico,/actuator/health
 
+    # CORS 允许的前端来源（逗号分隔，Origin 模式）。默认值见 SessionProperties：
+    #   http://172.16.132.64:8088,http://127.0.0.1:8088,http://localhost:8088
+    # 浏览器以 127.0.0.1 / localhost / 其他 IP 打开 8088 静态服务器时，请求头里的 Origin
+    # 必须命中本列表，否则预检 403 且无 Access-Control-Allow-Origin，前端实时数据无法从 18077 拉取。
+    # 生产部署按真实前端地址覆盖；长期禁止 allow *（Bearer 令牌透传场景放 '*' 等于裸奔）。
+    # cors-allowed-origins: http://172.16.132.64:8088,http://127.0.0.1:8088,http://localhost:8088
+
   # --------------------------------------------------------------------------------------------------
   # 登录认证（ConfigUserAuthServiceImpl）：内网单人工具的固定账号方案。
   # user-id 必须与业务表（WB_ITEM/WB_PROJECT/WB_NOTE）已有数据的 USER_ID 一致，

@@ -75,6 +75,23 @@ public class SessionProperties {
             "/actuator/health"
     };
 
+    /**
+     * CORS 允许的前端来源（Origin 模式，逗号分隔；支持 http(s)://host:port 或 *）。
+     *
+     * <p><b>Phase C 复盘</b>：此前硬编码为单一部署 IP {@code http://172.16.132.64:8088}。
+     * 当浏览器以 127.0.0.1 / localhost / 其他 IP 打开 8088 静态服务器时，请求头里的 Origin
+     * 不在白名单，预检（OPTIONS）直接 403 且不返回 Access-Control-Allow-Origin，
+     * 前端带令牌的实时数据请求被浏览器拦截、无法从 18077 拉取。</p>
+     *
+     * <p>现外部化为配置，默认覆盖「部署态 IP + 本地回环 + localhost」三类 8088 来源；
+     * 生产部署按真实前端地址覆盖即可。长期不要 allow *：带 Bearer 令牌透传时放 '*' 等于裸奔。</p>
+     */
+    private String[] corsAllowedOrigins = new String[]{
+            "http://172.16.132.64:8088",
+            "http://127.0.0.1:8088",
+            "http://localhost:8088"
+    };
+
     public Duration getExpireDuration() {
         return expireDuration;
     }
@@ -161,5 +178,13 @@ public class SessionProperties {
 
     public void setSkipUrls(String[] skipUrls) {
         this.skipUrls = skipUrls;
+    }
+
+    public String[] getCorsAllowedOrigins() {
+        return corsAllowedOrigins;
+    }
+
+    public void setCorsAllowedOrigins(String[] corsAllowedOrigins) {
+        this.corsAllowedOrigins = corsAllowedOrigins;
     }
 }
